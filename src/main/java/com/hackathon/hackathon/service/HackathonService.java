@@ -3,6 +3,8 @@ package com.hackathon.hackathon.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -10,12 +12,15 @@ import org.springframework.stereotype.Service;
 import com.hackathon.hackathon.model.Bidder;
 import com.hackathon.hackathon.model.Item;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 
 /**
  * Para el desarrollo de la prueba:
- * 
+ *
  * (La lista de items ya viene inyectada en el servicio procedente del fichero MockDataConfig.java)
- * 
+ *
  * - Completa el cuerpo del método getItemsByType(String type) que recibiendo el parámetro type, devuelva una lista de ítems del tipo especificado.
  *
  * - Completa el cuerpo del método makeOffer(String itemName, double amount, Bidder bidder), que al recibir el nombre del ítem (itemName), la cantidad de la oferta (amount), y el postor que realiza la oferta (bidder).
@@ -24,18 +29,17 @@ import com.hackathon.hackathon.model.Item;
  * 		# Si el ítem se encuentra, compara la oferta (amount) con la oferta más alta actual del ítem (highestOffer).
  * 			# Si la oferta es mayor que la oferta más alta, actualiza la oferta más alta y el postor actual del ítem y devuelve la constante OFFER_ACCEPTED.
  * 			# Si la oferta es igual o menor que la oferta más alta, devuelve la constante OFFER_REJECTED.
- * 
+ *
  * - Completa el cuerpo del método getWinningBidder() que debe devolver un Map de los Items en los que se haya pujado (que existe un Bidder) y cuyo valor sea el nombre del Bidder que ha pujado.
  */
 
 @Service
 public class HackathonService {
-	
-	private static String ITEM_NOT_FOUND = "Item not found";
-	private static String OFFER_ACCEPTED = "Offer accepted";
-	private static String OFFER_REJECTED = "Offer rejected";
 
-    private List<Item> items;
+	private static final String ITEM_NOT_FOUND = "Item not found";
+	private static final String OFFER_ACCEPTED = "Offer accepted";
+	private static final String OFFER_REJECTED = "Offer rejected";
+    private final List<Item> items;
 
     @Autowired
     public HackathonService(List<Item> items) {
@@ -47,7 +51,9 @@ public class HackathonService {
     }
 
     public List<Item> getItemsByType(String type) {
-    	return null;
+        return items.stream()
+                .filter(item -> item.getType().equals(type))
+                .toList();
     }
 
     public void addItem(Item item) {
@@ -55,10 +61,40 @@ public class HackathonService {
     }
 
 	public String makeOffer(String itemName, double amount, Bidder bidder) {
-    	return null;
+       Item itemFounded = findItemByName(itemName);
+       if (isNull(itemFounded)) {
+           return ITEM_NOT_FOUND;
+       }
+       if (isHighestOffer(amount, itemFounded.getHighestOffer())) {
+           updateItemWithAmountAndBidder(amount, bidder, itemFounded);
+           return OFFER_ACCEPTED;
+       }
+    	return OFFER_REJECTED;
 	}
 
-	public Map<String, String> getWinningBidder() {
-    	return null;
+    private void updateItemWithAmountAndBidder(double amount, Bidder bidder, Item itemFounded) {
+        itemFounded.setHighestOffer(amount);
+        itemFounded.setCurrentBidder(bidder);
+    }
+
+    private boolean isHighestOffer(double amount, double actualHighestOffer) {
+        return amount > actualHighestOffer;
+    }
+
+    private Item findItemByName(String itemName) {
+        return items.stream()
+                .filter(item -> item.getName().equals(itemName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public Map<String, String> getWinningBidder() {
+        return items.stream()
+                .filter(item -> nonNull(item.getCurrentBidder()))
+                .collect(Collectors.toMap(Item::getName, HackathonService::getCurrentBiderName));
+    }
+
+    private static String getCurrentBiderName(Item item) {
+        return item.getCurrentBidder().getName();
     }
 }
